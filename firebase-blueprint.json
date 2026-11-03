@@ -1,0 +1,195 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Authenticated user profile and role information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID" },
+        "email": { "type": "string", "description": "User email address" },
+        "displayName": { "type": "string", "description": "User full name" },
+        "role": { "type": "string", "enum": ["admin", "staff"], "description": "Access control role" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "Customer": {
+      "title": "Customer",
+      "description": "Telecom customer record with contact details and credit balance in paisa",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique customer ID" },
+        "name": { "type": "string", "maxLength": 100, "description": "Customer full name" },
+        "phone": { "type": "string", "maxLength": 20, "pattern": "^[0-9+()\\-\\s]+$", "description": "Mobile number" },
+        "address": { "type": "string", "maxLength": 250, "description": "Physical address" },
+        "registrationDate": { "type": "string", "format": "date" },
+        "notes": { "type": "string", "maxLength": 500 },
+        "totalOutstandingPaisa": { "type": "integer", "description": "Outstanding Udhaar balance in integer paisa" },
+        "totalSalesPaisa": { "type": "integer", "description": "Lifetime sales amount in paisa" },
+        "totalPaidPaisa": { "type": "integer", "description": "Lifetime paid amount in paisa" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "phone", "totalOutstandingPaisa"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "Telecom sales or load transaction record calculated in exact integer paisa",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique transaction ID" },
+        "date": { "type": "string", "format": "date-time" },
+        "customerId": { "type": "string", "description": "Reference to customer ID" },
+        "customerName": { "type": "string", "maxLength": 100 },
+        "customerPhone": { "type": "string", "maxLength": 20 },
+        "network": { "type": "string", "enum": ["Zong", "Jazz", "Ufone", "Telenor", "Other"] },
+        "packageName": { "type": "string", "enum": ["Slot", "My5", "Daily Package", "Weekly Package", "Monthly Package", "Custom Package"] },
+        "customPackageTitle": { "type": "string", "maxLength": 100 },
+        "costPricePaisa": { "type": "integer", "description": "Cost price in integer paisa" },
+        "salePricePaisa": { "type": "integer", "description": "Sale price in integer paisa" },
+        "profitPaisa": { "type": "integer", "description": "Profit in paisa: max(Sale - Cost, 0)" },
+        "lossPaisa": { "type": "integer", "description": "Loss in paisa: max(Cost - Sale, 0)" },
+        "paymentStatus": { "type": "string", "enum": ["PAID", "PARTIAL", "UDHAAR"] },
+        "amountReceivedPaisa": { "type": "integer", "description": "Amount received upon sale in paisa" },
+        "remainingBalancePaisa": { "type": "integer", "description": "Remaining balance on this sale in paisa" },
+        "notes": { "type": "string", "maxLength": 500 },
+        "status": { "type": "string", "enum": ["ACTIVE", "VOIDED"] },
+        "voidReason": { "type": "string", "maxLength": 250 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "date", "customerId", "network", "costPricePaisa", "salePricePaisa", "paymentStatus"]
+    },
+    "Payment": {
+      "title": "Payment",
+      "description": "Udhaar repayment transaction that reduces outstanding balance without creating sales",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique payment ID" },
+        "date": { "type": "string", "format": "date-time" },
+        "customerId": { "type": "string" },
+        "customerName": { "type": "string", "maxLength": 100 },
+        "amountPaisa": { "type": "integer", "description": "Amount received in paisa" },
+        "paymentMethod": { "type": "string", "enum": ["CASH", "EASYPAISA", "JAZZCASH", "BANK_TRANSFER", "OTHER"] },
+        "notes": { "type": "string", "maxLength": 500 },
+        "previousBalancePaisa": { "type": "integer" },
+        "newBalancePaisa": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "date", "customerId", "amountPaisa"]
+    },
+    "PaymentAllocation": {
+      "title": "PaymentAllocation",
+      "description": "Mapping of payment to specific credit transaction",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "paymentId": { "type": "string" },
+        "transactionId": { "type": "string" },
+        "allocatedPaisa": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "paymentId", "transactionId", "allocatedPaisa"]
+    },
+    "Network": {
+      "title": "Network",
+      "description": "Telecom operator metadata and visual styling",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "code": { "type": "string" },
+        "color": { "type": "string" },
+        "isActive": { "type": "boolean" },
+        "defaultPrefixes": { "type": "string" }
+      },
+      "required": ["id", "name"]
+    },
+    "Package": {
+      "title": "Package",
+      "description": "Telecom bundle preset with default pricing",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "network": { "type": "string" },
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "defaultCostPaisa": { "type": "integer" },
+        "defaultSalePaisa": { "type": "integer" },
+        "description": { "type": "string" }
+      },
+      "required": ["id", "network", "name"]
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "System activity and financial adjustment audit trail",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "action": { "type": "string" },
+        "entityType": { "type": "string" },
+        "entityId": { "type": "string" },
+        "performedBy": { "type": "string" },
+        "details": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "action", "timestamp"]
+    },
+    "Settings": {
+      "title": "Settings",
+      "description": "Application business settings and preferences",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "businessName": { "type": "string" },
+        "phone": { "type": "string" },
+        "address": { "type": "string" },
+        "currency": { "type": "string" },
+        "currencySymbol": { "type": "string" },
+        "language": { "type": "string" },
+        "timezone": { "type": "string" },
+        "securityPin": { "type": "string" },
+        "lowBalanceAlertThresholdPaisa": { "type": "integer" }
+      },
+      "required": ["id", "businessName", "currency"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles and permissions"
+    },
+    "/customers/{customerId}": {
+      "schema": "Customer",
+      "description": "Customer contact and credit balance accounts"
+    },
+    "/transactions/{transactionId}": {
+      "schema": "Transaction",
+      "description": "Telecom sales, bundles, slots, and loads"
+    },
+    "/payments/{paymentId}": {
+      "schema": "Payment",
+      "description": "Udhaar debt repayment transactions"
+    },
+    "/paymentAllocations/{allocationId}": {
+      "schema": "PaymentAllocation",
+      "description": "Allocation of payments against credit transactions"
+    },
+    "/networks/{networkId}": {
+      "schema": "Network",
+      "description": "Telecom operators configuration"
+    },
+    "/packages/{packageId}": {
+      "schema": "Package",
+      "description": "Telecom bundle presets"
+    },
+    "/auditLogs/{logId}": {
+      "schema": "AuditLog",
+      "description": "System audit logs for edits and voids"
+    },
+    "/settings/{settingId}": {
+      "schema": "Settings",
+      "description": "Business configuration and preferences"
+    }
+  }
+}

@@ -1,0 +1,132 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+    function incoming() {
+      return request.resource.data;
+    }
+    function existing() {
+      return resource.data;
+    }
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'khankahaajaag@gmail.com' ||
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+      );
+    }
+
+    // User collection
+    match /users/{userId} {
+      allow get: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isSignedIn() && request.auth.uid == userId &&
+        incoming().keys().hasAll(['uid', 'email', 'role']) &&
+        incoming().uid == request.auth.uid &&
+        (incoming().role == 'staff' || (incoming().role == 'admin' && request.auth.token.email == 'khankahaajaag@gmail.com'));
+      allow update: if isSignedIn() && (
+        (request.auth.uid == userId && incoming().diff(existing()).affectedKeys().hasOnly(['displayName'])) ||
+        isAdmin()
+      );
+      allow delete: if isAdmin();
+    }
+
+    // Customers collection
+    match /customers/{customerId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(customerId) &&
+        incoming().keys().hasAll(['id', 'name', 'phone', 'totalOutstandingPaisa']) &&
+        incoming().id == customerId &&
+        incoming().name is string && incoming().name.size() > 0 && incoming().name.size() <= 100 &&
+        incoming().phone is string && incoming().phone.size() <= 20 &&
+        incoming().totalOutstandingPaisa is int;
+      allow update: if isSignedIn() && isValidId(customerId) &&
+        incoming().id == existing().id &&
+        incoming().name is string && incoming().name.size() > 0 && incoming().name.size() <= 100 &&
+        incoming().phone is string && incoming().phone.size() <= 20 &&
+        incoming().totalOutstandingPaisa is int;
+      allow delete: if isSignedIn() && isValidId(customerId) && (
+        isAdmin() || existing().totalOutstandingPaisa == 0
+      );
+    }
+
+    // Transactions collection
+    match /transactions/{transactionId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(transactionId) &&
+        incoming().keys().hasAll(['id', 'date', 'customerId', 'network', 'costPricePaisa', 'salePricePaisa', 'paymentStatus']) &&
+        incoming().id == transactionId &&
+        incoming().costPricePaisa is int && incoming().costPricePaisa >= 0 &&
+        incoming().salePricePaisa is int && incoming().salePricePaisa >= 0 &&
+        incoming().profitPaisa is int &&
+        incoming().lossPaisa is int;
+      allow update: if isSignedIn() && isValidId(transactionId) &&
+        incoming().id == existing().id &&
+        (
+          isAdmin() ||
+          incoming().diff(existing()).affectedKeys().hasOnly(['notes', 'status', 'voidReason', 'paymentStatus', 'remainingBalancePaisa', 'updatedAt'])
+        );
+      allow delete: if isAdmin();
+    }
+
+    // Payments collection
+    match /payments/{paymentId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(paymentId) &&
+        incoming().keys().hasAll(['id', 'date', 'customerId', 'amountPaisa']) &&
+        incoming().id == paymentId &&
+        incoming().amountPaisa is int && incoming().amountPaisa > 0;
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Payment Allocations
+    match /paymentAllocations/{allocationId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(allocationId) &&
+        incoming().keys().hasAll(['id', 'paymentId', 'transactionId', 'allocatedPaisa']) &&
+        incoming().id == allocationId &&
+        incoming().allocatedPaisa is int;
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Networks
+    match /networks/{networkId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && isValidId(networkId);
+    }
+
+    // Packages
+    match /packages/{packageId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && isValidId(packageId);
+    }
+
+    // Audit Logs
+    match /auditLogs/{logId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(logId) &&
+        incoming().keys().hasAll(['id', 'action', 'timestamp']) &&
+        incoming().id == logId;
+      allow update, delete: if false; // Append-only audit logs
+    }
+
+    // Settings
+    match /settings/{settingId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && isValidId(settingId);
+    }
+  }
+}

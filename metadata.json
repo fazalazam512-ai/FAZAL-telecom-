@@ -1,0 +1,6 @@
+{
+  "name": "FAZAL AZAM TELECOM",
+  "description": "Professional Telecom Business & Financial Management Application for Fazal Azam Telecom with sales tracking, customer udhaar ledgers, profit & loss reports, and Excel export.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
